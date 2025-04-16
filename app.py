@@ -3,15 +3,23 @@ import joblib
 import urllib.parse
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Dict
 
-# ✅ Load Random Forest Model
-RF_MODEL_PATH = "models/random_forest_model_compressed.pkl"  # Assuming model is in the models folder
+# 🔥 FastAPI App
+app = FastAPI()
 
-try:
-    rf_model = joblib.load(RF_MODEL_PATH)
-except FileNotFoundError:
-    raise FileNotFoundError(f"❌ {RF_MODEL_PATH} not found. Train and save the model first.")
+# ⏳ Model placeholder
+rf_model = None
+
+# ✅ Lazy load Random Forest Model on startup
+@app.on_event("startup")
+def load_model():
+    global rf_model
+    model_path = "models/random_forest_model_compressed.pkl"
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"❌ {model_path} not found. Train and save the model first.")
+    
+    rf_model = joblib.load(model_path)
+    print("✅ Model loaded successfully")
 
 # 🚀 Feature Extraction (no pandas)
 def extract_features(url: str):
@@ -28,15 +36,15 @@ def extract_features(url: str):
         sum(c in "?&=_$" for c in url)
     ]]
 
-# 🔥 FastAPI App
-app = FastAPI()
-
 # Define Pydantic model for input data validation
 class URLRequest(BaseModel):
     url: str
 
 @app.post("/predict")
 async def predict(data: URLRequest):
+    if rf_model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded yet")
+
     url = data.url
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
@@ -50,8 +58,3 @@ async def predict(data: URLRequest):
     }
 
     return result
-
-# 🏁 Entry Point
-if __name__ == '__main__':
-    # FastAPI uses Uvicorn for ASGI-based serving, but since Railway handles that, you don't need to run app here
-    pass
