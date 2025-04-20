@@ -44,9 +44,6 @@ class URLRequest(BaseModel):
 async def predict(data: URLRequest):
     if rf_model is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
-@app.get("/")
-async def root():
-    return {"message": "URL Phishing Detector is running!"}
 
     url = data.url
     if not url:
@@ -61,3 +58,9 @@ async def root():
     }
 
     return result
+
+
+@app.get("/")
+async def root():
+    return {"message": "URL Phishing Detector is running!"}
+
